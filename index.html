@@ -44,7 +44,7 @@ button:disabled{opacity:.4;cursor:default}
 #panel{position:absolute;display:flex;flex-direction:column;gap:12px;background:var(--panel);backdrop-filter:blur(10px);
   border:1px solid var(--line);overflow:auto;padding:16px}
 @media (min-width:900px){#panel{top:76px;bottom:16px;right:16px;width:360px;border-radius:16px}}
-@media (max-width:899px){.modes button{padding:6px 9px;font-size:13px}.brand svg{width:28px;height:28px}h2{font-size:22px}#stepText{min-height:0}
+@media (max-width:899px){.hud{flex-wrap:wrap;row-gap:8px}.modes{flex:1 1 100%;justify-content:flex-start;flex-wrap:nowrap}.modes button{padding:7px 10px;font-size:13px;white-space:nowrap}#btnSound{margin-left:auto}.brand svg{width:28px;height:28px}h2{font-size:22px}#stepText{min-height:0}
   #panel{left:0;right:0;bottom:0;max-height:44%;gap:10px;border-radius:18px 18px 0 0;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 14px)}
   .brand b{font-size:18px}}
 .eyebrow{align-items:center;font-size:11px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;display:flex;justify-content:space-between;gap:8px}
@@ -83,6 +83,10 @@ button.mini{padding:3px 9px;font-size:12px;text-transform:none;letter-spacing:0;
   background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px;backdrop-filter:blur(10px);width:max-content;max-width:calc(100% - 32px)}
 #dock button{padding:10px 14px}
 @media (max-width:420px){.eyebrow .topic{display:none}}
+#arBar{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;justify-content:center;gap:12px;padding:0 16px;pointer-events:none}
+#arBar button{pointer-events:auto;padding:12px 22px;font-size:16px;border-radius:999px;backdrop-filter:blur(8px);box-shadow:0 6px 20px rgba(0,0,0,.35)}
+#arBar #arExit{background:rgba(6,10,25,.72)}
+#app.arMode .hud .modes,#app.arMode #dock,#app.arMode #panel{display:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -97,6 +101,7 @@ button.mini{padding:3px 9px;font-size:12px;text-transform:none;letter-spacing:0;
     </div>
     <div class="modes">
       <button id="btnAR" class="primary">Show on your table</button>
+      <button id="btnAny" hidden title="Put the lab anywhere on your desk">Place anywhere</button>
       <a id="qlLink" rel="ar" href="physicsway_lab_ios.usdz" aria-hidden="true" tabindex="-1" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden"><img alt="" width="1" height="1" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></a>
       <button id="btnCam" aria-pressed="false" hidden>Camera mode</button>
       <button id="btnSound" aria-pressed="true" title="Electric sound effects">Sound on</button>
@@ -145,6 +150,7 @@ button.mini{padding:3px 9px;font-size:12px;text-transform:none;letter-spacing:0;
     <button id="dFlip">Flip magnet</button>
     <button id="dShow" class="primary">Show lesson ▴</button>
   </div>
+  <div id="arBar" hidden><button id="arExit" aria-label="Exit table view">✕ Exit</button><button id="arNext" class="primary">Next ›</button></div>
   <div id="toast" style="opacity:0"></div>
   <div id="mkHint" hidden><b>Point your camera at the poster</b>The lab will appear on the Physics Way QR poster</div>
   <div id="arHint" hidden>Move your phone slowly until the gold ring appears, then tap to place the lab</div>
@@ -202,7 +208,7 @@ sun.shadow.mapSize.set(1024,1024); Object.assign(sun.shadow.camera,{left:-.4,rig
 scene.add(sun);
 
 const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 20);
-const HOME = { dir:new THREE.Vector3(0.42,0.40,0.80).normalize(), target:new THREE.Vector3(0,0.31,0) };
+const HOME = { dir:new THREE.Vector3(0.42,0.40,0.80).normalize(), target:new THREE.Vector3(0,0.28,0) };
 function homeView(){ const asp = innerWidth/innerHeight; const d = asp >= 1 ? 1.05 : Math.min(2.3, 0.92/asp); camera.position.copy(HOME.target).addScaledVector(HOME.dir, d); controls && controls.target.copy(HOME.target); }
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; homeView();
@@ -219,7 +225,7 @@ function resize(){
   camera.aspect = w/h;
   if (!panelOpen) camera.setViewOffset(w,h, 0, Math.round(h*0.04), w,h);   // panel hidden: centre the lab
   else if (w >= 900) camera.setViewOffset(w,h, 180,0, w,h);       // content shifts left of the side panel
-  else camera.setViewOffset(w,h, 0, Math.round(h*0.19), w,h); // content lifts above the bottom sheet
+  else camera.setViewOffset(w,h, 0, Math.round(h*0.18), w,h); // content lifts above the bottom sheet
   camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
@@ -348,8 +354,8 @@ function flipMagnet(){
 const boardCanvas = document.createElement('canvas'); boardCanvas.width = 1024; boardCanvas.height = 300;
 const boardTex = new THREE.CanvasTexture(boardCanvas); boardTex.colorSpace = THREE.SRGBColorSpace;
 const board = new THREE.Sprite(new THREE.SpriteMaterial({ map:boardTex, depthTest:false, transparent:true }));
-board.renderOrder = 20; board.position.set(0, 0.62, 0); lab.add(board);
-const BW = 0.34; board.scale.set(BW, BW*300/1024, 1);
+board.renderOrder = 20; board.position.set(0, 0.49, 0); lab.add(board);
+let BW = 0.34; board.scale.set(BW, BW*300/1024, 1);
 let stepCaption = ['', '', COL.gold], flashTimer = null;
 function drawBoard(title, line, color){
   const g = boardCanvas.getContext('2d'), hex = '#'+color.toString(16).padStart(6,'0');
@@ -397,6 +403,7 @@ function showStep(n){
   $('stepText').innerHTML = step === steps.length-1 ? outroText() : s.x;
   $('btnPrev').disabled = step === 0;
   $('btnNext').textContent = step===0 ? 'Start the experiment' : step===steps.length-1 ? 'Restart' : 'Next';
+  $('arNext').textContent = step===steps.length-1 ? 'Restart ↺' : 'Next ›';
   setCaption(...s.c);
   readout();
 }
@@ -526,11 +533,12 @@ let hitSource = null, placed = false;
 const quickLook = (() => { try { return document.createElement('a').relList.supports('ar'); } catch(e){ return false; } })();
 let webxrAR = false;
 if (navigator.xr && navigator.xr.isSessionSupported){
-  navigator.xr.isSessionSupported('immersive-ar').then(ok => { if (ok){ webxrAR = true; $('btnAR').hidden = false; } }).catch(()=>{});
+  navigator.xr.isSessionSupported('immersive-ar').then(ok => { if (ok){ webxrAR = true; $('btnAny').hidden = false; } }).catch(()=>{});
 }
-if (quickLook) $('btnAR').hidden = false;
+if (quickLook) $('btnAny').hidden = false;
 // Phones without ARCore (many Realme/Oppo/Xiaomi budget models): gyroscope + camera "table view"
 const canCam = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+if (canCam && matchMedia('(pointer:coarse)').matches) $('btnAny').hidden = false;
 
 let fakeAR = false, ori = null, yaw0 = null, gotOri = false;
 const _e = new THREE.Euler(), _q0 = new THREE.Quaternion(), _q1 = new THREE.Quaternion(-Math.sqrt(0.5),0,0,Math.sqrt(0.5)), _z = new THREE.Vector3(0,0,1), _yaw = new THREE.Quaternion();
@@ -543,18 +551,19 @@ async function startFakeAR(){
   try{ if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); }catch(e){}
   addEventListener('deviceorientation', onOri);
   fakeAR = true; yaw0 = null; gotOri = false;
-  $('stage').style.background = 'transparent'; $('btnAR').textContent = 'Exit table view'; $('btnCam').hidden = true;
+  $('stage').style.background = 'transparent'; $('btnAny').textContent = 'Exit'; $('btnCam').hidden = true;
   controls.enabled = false; camera.clearViewOffset(); camera.updateProjectionMatrix();
   world.position.set(0, 0, -1.0); world.rotation.y = 0.5; shadowCatcher.material.opacity = .25;
   camera.position.set(0, 0.5, 0); camera.lookAt(0, 0.25, -1.0);
-  setPanel(false); sfx('on');
+  enterARUI(); sfx('on');
   toast('Point your phone at the table and look around the lab');
   setTimeout(() => { if (fakeAR && !gotOri) toast('No motion sensor found: drag with your finger to look around'); if (fakeAR && !gotOri){ controls.enabled = true; controls.target.set(0,0.25,-1.0); } }, 2500);
 }
 function stopFakeAR(){
+  exitARUI();
   fakeAR = false; removeEventListener('deviceorientation', onOri);
   if (stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
-  $('cam').hidden = true; $('stage').style.background = ''; $('btnAR').textContent = 'Show on your table'; $('btnCam').hidden = false;
+  $('cam').hidden = true; $('stage').style.background = ''; $('btnAny').textContent = 'Place anywhere'; $('btnCam').hidden = false;
   world.position.set(0,0,0); world.rotation.set(0,0,0); controls.enabled = true; shadowCatcher.material.opacity = .35; resize(); homeView();
 }
 function fakeARCamera(){
@@ -571,8 +580,17 @@ $('panel').addEventListener('beforexrselect', e => e.preventDefault());
 $('mkHint').addEventListener('beforexrselect', e => e.preventDefault());
 document.querySelector('.hud').addEventListener('beforexrselect', e => e.preventDefault());
 $('dock').addEventListener('beforexrselect', e => e.preventDefault());
+// Two ways to see the lab in the real world:
+//  "Show on your table" -> locked onto the printed Physics Way QR poster (all phones, iPhone included)
+//  "Place anywhere"      -> free placement: WebXR on ARCore Android, AR Quick Look on iPhone, gyro camera view elsewhere
 $('btnAR').onclick = async () => {
-  if (markerOn) { stopMarker(); return; } await startMarker(); return;
+  if (fakeAR) stopFakeAR();
+  if (renderer.xr.isPresenting) renderer.xr.getSession().end();
+  if (markerOn) { stopMarker(); return; }
+  await startMarker();
+};
+$('btnAny').onclick = async () => {
+  if (markerOn) stopMarker();
   if (!webxrAR && quickLook){ sfx('on'); $('qlLink').click(); return; }
   if (!webxrAR){ if (fakeAR) stopFakeAR(); else await startFakeAR(); return; }
   if (renderer.xr.isPresenting){ renderer.xr.getSession().end(); return; }
@@ -580,8 +598,8 @@ $('btnAR').onclick = async () => {
     const session = await navigator.xr.requestSession('immersive-ar', { requiredFeatures:['hit-test'], optionalFeatures:['dom-overlay'], domOverlay:{ root:$('app') } });
     renderer.xr.setReferenceSpaceType('local');
     await renderer.xr.setSession(session);
-    $('stage').style.background = 'transparent'; $('btnAR').textContent = 'Exit table view'; $('arHint').hidden = false;
-    placed = false; world.visible = false; shadowCatcher.material.opacity = .25;
+    $('stage').style.background = 'transparent'; $('btnAny').textContent = 'Exit'; $('arHint').hidden = false;
+    placed = false; world.visible = false; shadowCatcher.material.opacity = .25; enterARUI();
     const viewer = await session.requestReferenceSpace('viewer');
     hitSource = await session.requestHitTestSource({ space:viewer });
     session.addEventListener('select', () => {
@@ -592,8 +610,9 @@ $('btnAR').onclick = async () => {
       world.visible = true; placed = true; reticle.visible = false; $('arHint').hidden = true; sfx('on');
     });
     session.addEventListener('end', () => {
+      exitARUI();
       hitSource = null; world.position.set(0,0,0); world.rotation.set(0,0,0); world.visible = true; reticle.visible = false;
-      $('stage').style.background = ''; $('btnAR').textContent = 'Show on your table'; $('arHint').hidden = true;
+      $('stage').style.background = ''; $('btnAny').textContent = 'Place anywhere'; $('arHint').hidden = true;
     });
   }catch(e){ toast('AR could not start on this device.'); }
 };
@@ -620,6 +639,7 @@ async function startMarker(){
     scene.remove(world); mindAnchor.group.add(world);
     world.position.set(0, 0, 0); world.rotation.set(Math.PI/2, 0, 0); world.scale.setScalar(1.3);
     shadowCatcher.visible = false;
+    BW = 0.24; board.position.y = 0.40; board.scale.set(BW, BW*300/1024, 1);
     mindAnchor.onTargetFound = () => { $('mkHint').hidden = true; sfx('on'); };
     mindAnchor.onTargetLost = () => { $('mkHint').hidden = false; };
     await mind.start();
@@ -627,7 +647,7 @@ async function startMarker(){
     $('stage').style.background = '#000';
     mr.setAnimationLoop((t) => { frameUpdate(t, null); mr.render(ms, mind.camera); });
     markerOn = true; $('mkHint').hidden = false; $('btnAR').textContent = 'Exit table view';
-    setPanel(false);
+    enterARUI();
   }catch(e){
     console.error(e); stopMarker(true);
     toast('The camera could not start. Allow camera access and try again.');
@@ -635,6 +655,8 @@ async function startMarker(){
   mindBusy = false;
 }
 function stopMarker(silent){
+  exitARUI();
+  BW = 0.34; board.position.y = 0.49; board.scale.set(BW, BW*300/1024, 1);
   try{ if (mind){ mind.renderer.setAnimationLoop(null); mind.stop(); } }catch(e){}
   if (mindAnchor) mindAnchor.group.remove(world);
   scene.add(world); world.position.set(0,0,0); world.rotation.set(0,0,0); world.scale.setScalar(1); shadowCatcher.visible = true;
@@ -643,6 +665,18 @@ function stopMarker(silent){
   mind = null; mindAnchor = null; markerOn = false; $('btnAR').textContent = 'Show on your table';
   resize(); homeView();
 }
+
+
+// ---------- minimal UI while the lab is in the real world: only Next + Exit ----------
+function enterARUI(){ $('app').classList.add('arMode'); $('arBar').hidden = false; $('arNext').textContent = step===steps.length-1 ? 'Restart ↺' : 'Next ›'; }
+function exitARUI(){ if (!$('app').classList.contains('arMode')) return; $('app').classList.remove('arMode'); $('arBar').hidden = true; setPanel(true); }
+$('arNext').onclick = () => { $('btnNext').click(); };
+$('arExit').onclick = () => {
+  if (markerOn) stopMarker();
+  if (fakeAR) stopFakeAR();
+  if (renderer.xr.isPresenting) renderer.xr.getSession().end();
+};
+$('arBar').addEventListener('beforexrselect', e => e.preventDefault());
 
 // ---------- frame loop ----------
 const clock = new THREE.Clock();
